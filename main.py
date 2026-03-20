@@ -1,9 +1,19 @@
+import logging
+import os
+
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import yfinance as yf
-import traceback
 
-app = FastAPI()
+from api.routes import router
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(title="SpotMyChart API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -12,22 +22,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/chart/{symbol}")
-def get_chart(symbol: str):
-    try:
-        ticker = yf.Ticker(symbol + ".NS")
-        df = ticker.history(start="2021-01-01", interval="1d")
-        if df.empty:
-            return {"error": "No data found for " + symbol}
-        df = df.reset_index()
-        df["Date"] = df["Date"].astype(str).str[:10]
-        candles = df[["Date","Open","High","Low","Close","Volume"]].rename(
-            columns={"Date":"date","Open":"open","High":"high","Low":"low","Close":"close","Volume":"volume"}
-        ).to_dict("records")
-        return {"symbol": symbol, "candles": candles}
-    except Exception as e:
-        return {"error": str(e), "trace": traceback.format_exc()}
+app.include_router(router)
 
-@app.get("/health")
+
+@app.get("/")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "app": "SpotMyChart API"}
+
+
+@app.on_event("startup")
+async def on_startup():
+    logger.info("SpotMyChart API is running.")
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)

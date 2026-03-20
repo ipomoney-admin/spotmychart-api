@@ -2,3 +2,10 @@ fastapi
 uvicorn
 yfinance
 pandas
+numpy
+supabase
+redis
+python-dotenv
+apscheduler
+httpx
+scipy
