@@ -13,5 +13,5 @@ try:
     r = redis.from_url(REDIS_URL, decode_responses=True)
     r.ping()
 except redis.RedisError as e:
-    logger.error(f"Redis connection failed: {e}")
+    logger.warning(f"Redis unavailable — running without cache: {e}")
     r = None

@@ -1,10 +1,11 @@
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
+from core.scheduler import get_status, run_scan_job, scheduler
 from core.supabase_client import sb
-from engine.scanner import get_scan_status, run_daily_scan
 
 logger = logging.getLogger(__name__)
 
@@ -234,7 +235,20 @@ def remove_from_watchlist(user_id: str, ticker: str):
 
 @router.get("/scan/status")
 def scan_status():
-    return get_scan_status()
+    status = get_status()
+    next_run = None
+    try:
+        job = scheduler.get_job("daily_scan")
+        if job and job.next_run_time:
+            next_run = job.next_run_time.isoformat()
+    except Exception:
+        pass
+    return {
+        "last_run":       status["last_run"],
+        "next_run":       next_run,
+        "status":         status["status"],
+        "stocks_scanned": status["stocks_scanned"],
+    }
 
 
 # ------------------------------------------------------------------ #
@@ -243,5 +257,5 @@ def scan_status():
 
 @router.post("/scan/run")
 def trigger_scan(background_tasks: BackgroundTasks):
-    background_tasks.add_task(run_daily_scan)
-    return {"status": "scan started"}
+    background_tasks.add_task(run_scan_job)
+    return {"message": "Scan started", "triggered_at": datetime.utcnow().isoformat()}

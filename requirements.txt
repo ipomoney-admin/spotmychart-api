@@ -7,5 +7,6 @@ supabase
 redis
 python-dotenv
 apscheduler
+pytz
 httpx
 scipy
