@@ -259,3 +259,39 @@ def scan_status():
 def trigger_scan(background_tasks: BackgroundTasks):
     background_tasks.add_task(run_scan_job)
     return {"message": "Scan started", "triggered_at": datetime.utcnow().isoformat()}
+
+
+# ------------------------------------------------------------------ #
+# GET /chart/{symbol}                                                 #
+# ------------------------------------------------------------------ #
+
+@router.get("/chart/{symbol}")
+def get_chart(symbol: str):
+    import yfinance as yf
+    symbol = symbol.upper().strip()
+    yf_symbol = symbol + ".NS"
+    try:
+        ticker_obj = yf.Ticker(yf_symbol)
+        hist = ticker_obj.history(period="6mo", interval="1d")
+        if hist.empty:
+            yf_symbol = symbol + ".BO"
+            ticker_obj = yf.Ticker(yf_symbol)
+            hist = ticker_obj.history(period="6mo", interval="1d")
+        if hist.empty:
+            raise HTTPException(status_code=404, detail=f"No data for {symbol}")
+        candles = []
+        for date, row in hist.iterrows():
+            candles.append({
+                "time": int(date.timestamp()),
+                "open": round(float(row["Open"]), 2),
+                "high": round(float(row["High"]), 2),
+                "low": round(float(row["Low"]), 2),
+                "close": round(float(row["Close"]), 2),
+                "volume": int(row["Volume"]),
+            })
+        return {"symbol": symbol, "candles": candles}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"GET /chart/{symbol} error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch chart for {symbol}")
