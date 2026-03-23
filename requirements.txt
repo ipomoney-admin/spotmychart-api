@@ -8,5 +8,6 @@ redis
 python-dotenv
 apscheduler
 pytz
+python-dateutil
 httpx
 scipy

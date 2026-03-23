@@ -3,6 +3,7 @@ from datetime import datetime
 
 import pytz
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,26 @@ _scan_status: dict = {
 
 def get_status() -> dict:
     return {**_scan_status}
+
+
+def run_tier_reassignment_job() -> None:
+    """Scheduler-facing wrapper for quarterly tier reassignment."""
+    from engine.tier_reassigner import reassign_all_tiers  # late import avoids circular
+    logger.info("Scheduler: starting quarterly tier reassignment.")
+    try:
+        result = reassign_all_tiers()
+        logger.info(f"Scheduler: tier reassignment done — {result}")
+    except Exception as e:
+        logger.error(f"Scheduler: tier reassignment raised an unhandled exception: {e}")
+
+
+scheduler.add_job(
+    run_tier_reassignment_job,
+    CronTrigger(month="1,4,7,10", day=1, hour=6, minute=0,
+                timezone=IST),
+    id="quarterly_tier_reassignment",
+    replace_existing=True,
+)
 
 
 def run_scan_job() -> None:

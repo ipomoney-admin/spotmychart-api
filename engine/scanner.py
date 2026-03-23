@@ -172,6 +172,7 @@ def _update_trades(ticker: str, current_close: float, today: date) -> list[str]:
                 f"[{ticker}] Trade closed — reason={close_reason} "
                 f"return={return_pct:.2f}% status={close_status}"
             )
+            _recalculate_metrics(ticker, pattern_key)
         except Exception as e:
             logger.error(f"[{ticker}] Failed to close trade {trade.get('id')}: {e}")
 
@@ -245,11 +246,8 @@ def run_daily_scan() -> None:
             current_close = float(df["close"].iloc[-1])
 
             # ── Step 10: close stale/stopped trades (before emitting new signals) ──
-            affected_patterns = _update_trades(ticker, current_close, today)
-
-            # ── Step 11: recalculate metrics for affected patterns ── #
-            for pattern_key in affected_patterns:
-                _recalculate_metrics(ticker, pattern_key)
+            # _recalculate_metrics is called inside _update_trades for each closed trade
+            _update_trades(ticker, current_close, today)
 
             # ── Step 4: stage analysis ───────────────────────────── #
             stage = get_stage(df)

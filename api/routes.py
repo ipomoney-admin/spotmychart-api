@@ -262,6 +262,30 @@ def trigger_scan(background_tasks: BackgroundTasks):
 
 
 # ------------------------------------------------------------------ #
+# POST /tiers/reassign                                                #
+# GET  /tiers/status                                                  #
+# ------------------------------------------------------------------ #
+
+@router.post("/tiers/reassign")
+def trigger_tier_reassignment(background_tasks: BackgroundTasks):
+    from engine.tier_reassigner import reassign_all_tiers
+    background_tasks.add_task(reassign_all_tiers)
+    return {"message": "Tier reassignment started", "triggered_at": datetime.utcnow().isoformat()}
+
+
+@router.get("/tiers/status")
+def get_tier_distribution():
+    try:
+        resp = sb.table("smc_metrics").select("tier").execute()
+        from collections import Counter
+        counts = Counter(r["tier"] for r in resp.data if r.get("tier"))
+        return {"distribution": dict(sorted(counts.items())), "total": len(resp.data)}
+    except Exception as e:
+        logger.error(f"GET /tiers/status error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch tier distribution.")
+
+
+# ------------------------------------------------------------------ #
 # GET /chart/{symbol}                                                 #
 # ------------------------------------------------------------------ #
 
